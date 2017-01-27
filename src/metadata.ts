@@ -32,7 +32,7 @@ export default class Metadata implements MetadataInterface {
 	* @param  {Boolean} isXml declares whether meta is xmlString or filePath
 	*/
 	constructor (meta, extraParse, isXml?: boolean) {
-    this.xmlString = isXml === true ? meta.toString() :　fs.readFileSync(meta).toString();
+		this.xmlString = isXml === true ? String(meta) :　String(fs.readFileSync(meta));
     this.meta = libsaml.extractor(this.xmlString, Array.prototype.concat([{
       localName: 'EntityDescriptor',
       attributes: ['entityID']

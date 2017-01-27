@@ -11,6 +11,8 @@ import { namespace, wording, algorithms } from './urn';
 import * as uuid from 'node-uuid';
 import libsaml from './libsaml';
 import Metadata from './metadata';
+import IdpMetadata from './metadata-idp';
+import SpMetadata from './metadata-sp';
 import redirectBinding from './binding-redirect';
 import postBinding from './binding-post';
 
@@ -56,12 +58,18 @@ export default class Entity {
   * @param {string} entityMeta is the entity metafile path, deprecated after 2.0
   */
   constructor (entitySetting, entityType) {
-    if (!['idp', 'sp'].indexOf(entityType)) {
-      throw new Error('undefined entity type');
-    }
-    const metadata = entitySetting.metadata;
     this.entitySetting = new EntitySetting(entitySetting);
-    this.entityMeta = require('./' + entityType)(metadata !== undefined ? metadata: entitySetting);
+    const metadata = entitySetting.metadata ? entitySetting.metadata : entitySetting;
+		switch (entityType) {
+			case 'idp':
+				this.entityMeta = IdpMetadata(metadata);
+				break;
+			case 'sp':
+				this.entityMeta = SpMetadata(metadata);
+				break;
+			default:
+				throw new Error('undefined entity type');
+		}
   }
   /**
   * @desc  getEntityID
@@ -169,7 +177,7 @@ export default class Entity {
 
     if (binding === bindDict.redirect && supportBindings.indexOf(nsBinding[binding]) !== -1) {
       let reqQuery: { sigAlg: string, signature: string } = req.query;
-      let samlContent = reqQuery[parserType];
+      let samlContent = reqQuery[libsaml.getQueryParamByType(parserType)];
 
       if (samlContent === undefined) {
         throw new Error('Bad request');
@@ -203,7 +211,7 @@ export default class Entity {
     }
     if (binding == bindDict.post && supportBindings.indexOf(nsBinding[binding]) !== -1) {
       // make sure express.bodyParser() has been used
-      let encodedRequest = req.body[parserType];
+      let encodedRequest = req.body[libsaml.getQueryParamByType(parserType)];
       let decodedRequest = utility.base64Decode(encodedRequest);
       let issuer = targetEntityMetadata.getEntityID();
       //SS-1.1
@@ -255,7 +263,7 @@ export default class Entity {
         }, rcallback),
         relayState: relayState,
         entityEndpoint: targetEntity.entityMeta.getSingleLogoutService(binding),
-        actionType: 'LogoutRequest'
+        actionType: 'SAMLRequest'
       });
     }
     // Will support arifact in the next release
@@ -286,7 +294,7 @@ export default class Entity {
         }, rcallback),
         relayState: relayState,
         entityEndpoint: targetEntity.entityMeta.getSingleLogoutService(binding),
-        actionType: 'LogoutResponse'
+        actionType: 'SAMLResponse'
       });
     }
     throw new Error('This binding is not support');
