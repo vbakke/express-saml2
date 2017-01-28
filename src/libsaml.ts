@@ -371,7 +371,7 @@ const libSaml = function () {
 		extractor: function (xmlString: string, fields) {
 			let doc = new dom().parseFromString(xmlString);
 			let meta = {};
-			fields.forEach(function (field) {
+			fields.forEach(field => {
 				let objKey;
 				let res;
 				if (typeof field === 'string') {

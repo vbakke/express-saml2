@@ -102,6 +102,7 @@ export class IdpMetadata extends Metadata {
 				}, { IDPSSODescriptor }]
 			}]);
 		}
+
 		super(meta, [{
 			localName: 'IDPSSODescriptor',
 			attributes: ['WantAuthnRequestsSigned']
@@ -109,6 +110,7 @@ export class IdpMetadata extends Metadata {
 			localName: { tag: 'SingleSignOnService', key: 'Binding' },
 			attributeTag: 'Location'
 		}], !byMetadata);
+
 	}
   /**
   * @desc Get the preference whether it wants a signed request

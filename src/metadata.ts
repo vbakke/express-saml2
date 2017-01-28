@@ -33,6 +33,7 @@ export default class Metadata implements MetadataInterface {
 	*/
 	constructor (meta, extraParse, isXml?: boolean) {
 		this.xmlString = isXml === true ? String(meta) :　String(fs.readFileSync(meta));
+		console.log('xmlstring <<<<<<<<<<<<<', this.xmlString);
     this.meta = libsaml.extractor(this.xmlString, Array.prototype.concat([{
       localName: 'EntityDescriptor',
       attributes: ['entityID']
@@ -48,7 +49,8 @@ export default class Metadata implements MetadataInterface {
         key: 'Binding'
       },
       attributeTag: 'Location'
-    }, 'NameIDFormat'], extraParse || [])); // function overloading
+    }, 'NameIDFormat'], extraParse || []));
+		console.log("<<<<<<<<<< meta", this.meta);
 	}
   /**
   * @desc Get the metadata in xml format
