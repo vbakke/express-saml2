@@ -166,7 +166,6 @@ router.get('/logout/all', function (req, res) {
   } else {
     req.session.relayStep = 0;
   }
-  //console.log('session:relayStep',req.session.relayStep,serviceList.length);
   if (req.session.relayStep < serviceList.length) {
     if (req.session.relayStep === serviceList.length - 1) {
       relayState = '';
@@ -194,8 +193,11 @@ router.get('/select/:id', function (req, res) {
   var assoIdp = entity.assoIdp;
   var targetSP = entity.targetSP;
   req.user.email = epn[req.user.sysEmail].app[req.params.id.toString()].assoSpEmail;
+  console.log('<<<<<<<<<<< flag 1')
   assoIdp.sendLoginResponse(targetSP, null, 'post', req.user, function (response) {
+    console.log('<<<<<<<<<< flag 2')
     response.title = 'POST data';
+    console.log('<<<<<<<<<< flag 3', response)
     res.render('actions', response);
   });
 });

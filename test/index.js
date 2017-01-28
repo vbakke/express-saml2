@@ -11,7 +11,7 @@ var fs = require('fs');
 var SamlLib = entry.SamlLib;
 var xpath = require('xpath');
 var dom = require('xmldom').DOMParser;
-var wording = require('../lib/urn').wording;
+var wording = require('../build/src/urn').wording;
 var binding = entry.Constants.namespace.binding;
 var select = require('xml-crypto').xpath;
 var algorithms = entry.Constants.algorithms;
@@ -75,18 +75,11 @@ describe('1. Utility.js', function () {
     (Utility.inflateString('80jNyclXCM8vykkBAA==')).should.be.equal('Hello World');
     done();
   });
-  it('1.5 Check item whether it is true', function (done) {
-    (Utility.isTrue('true').should.be.equal(true));
-    (Utility.isTrue('false').should.be.equal(false));
-    (Utility.isTrue(true).should.be.equal(true));
-    (Utility.isTrue(undefined).should.be.equal(false));
-    done();
-  });
-  it('1.6 Parse Certificate should return clean certificate', function (done) {
+  it('1.5 Parse Certificate should return clean certificate', function (done) {
     (Utility.parseCerFile('./test/key/sp/cert.cer').should.be.equal((spCertKnownGood)));
     done();
   });
-  it('1.7 Normalize Pem should return clean string', function (done) {
+  it('1.6 Normalize Pem should return clean string', function (done) {
     (Utility.normalizePemString(fs.readFileSync('./test/key/sp/encryptKey.pem').toString()).should.be.equal((spPemKnownGood)));
     done();
   });
@@ -539,10 +532,8 @@ describe('2. SamlLib.js', function () {
   });
 });
 
-});
-
 describe('3 Constant.js', function () {
-  var entry = require('../index');
+  var entry = require('../build/index');
   var constants = entry.Constants;
   it('constants should be exported', function (done) {
     if (typeof constants === 'object') done();

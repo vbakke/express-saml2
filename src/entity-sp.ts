@@ -76,7 +76,8 @@ export class ServiceProvider extends Entity {
   * @param  {function} parseCallback             developers use their own validation to do with passing information
   */
 	public parseLoginResponse(idp, binding, req, parseCallback) {
-		return super.abstractBindingParser({
+		console.log('entity sp plr - flag 1')
+		return this.abstractBindingParser({
 			parserFormat: [{
 				localName: 'StatusCode',
 				attributes: ['Value']

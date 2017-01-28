@@ -149,7 +149,7 @@ export class SpMetadata extends Metadata {
 		if (typeof binding === 'string') {
 			let location;
 			let bindName = namespace.binding[binding];
-
+			console.log(this.meta);
 			if (this.meta.assertionconsumerservice.length > 0) {
 				this.meta.assertionconsumerservice.forEach(obj => {
 					if (obj.binding === bindName) {

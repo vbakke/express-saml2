@@ -110,11 +110,11 @@ const libSaml = function () {
 	* @return {string/null} signing algorithm short-hand for the module node-rsa
 	*/
 	function getSigningScheme(sigAlg: string): string | null {
-		const algAlias = this.nrsaAliasMapping[sigAlg];
+		const algAlias = nrsaAliasMapping[sigAlg];
 		if (algAlias !== undefined) {
 			return algAlias;
 		}
-		return this.nrsaAliasMapping[signatureAlgorithms.RSA_SHA1]; // default value
+		return nrsaAliasMapping[signatureAlgorithms.RSA_SHA1]; // default value
 	}
 	/**
 	* @private
@@ -325,10 +325,13 @@ const libSaml = function () {
 			if (referenceXPath && referenceXPath !== '') {
 				sig.addReference(referenceXPath, null, getDigestMethod(signatureAlgorithm)); // SS-1.1
 			}
+			console.log('cssi - flag 1')
 			sig.signatureAlgorithm = signatureAlgorithm; // SS-1.1
 			sig.keyInfoProvider = new this.getKeyInfo(x509);
+			console.log('cssi - flag 2', keyFile, passphrase)
 			sig.signingKey = utility.readPrivateKeyFromFile(keyFile, passphrase, true);
 			sig.computeSignature(xmlString);
+			console.log('cssi - flag 3')
 			return isBase64Output !== false ? utility.base64Encode(sig.getSignedXml()) : sig.getSignedXml();
 		},
 		/**
@@ -535,12 +538,18 @@ const libSaml = function () {
 					let encryptedData = encryptedDataNode !== undefined ? utility.parseString(encryptedDataNode.toString()) : '';
 
 					if (encryptedData === '') throw new Error('Undefined assertion or invalid syntax');
+					console.log('hereSetting ===============', hereSetting)
+					console.log('encryptedData ===============', encryptedData)
+					console.log('encryptedData key ===============', utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass))
 					xmlenc.decrypt(encryptedData, {
 						key: utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass), // use this entity's private to decrypt
 					}, function (err, res) {
-						if (err) throw new Error('Exception in decryptAssertion ' + err);
+						if (err) {
+							console.log('********* exception ************', err);
+							throw new Error('Exception in decryptAssertion ' + err);
+						}
 						if (res) {
-							callback(parseEntireXML.toString().replace('<saml:EncryptedAssertion>', '').replace('</saml:EncryptedAssertion>', '').replace(encryptedData, res));
+							callback(String(parseEntireXML).replace('<saml:EncryptedAssertion>', '').replace('</saml:EncryptedAssertion>', '').replace(encryptedData, res));
 						} else {
 							throw new Error('Undefined encrypted assertion');
 						}
