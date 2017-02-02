@@ -544,7 +544,6 @@ describe('4 ServiceProvider.js', function () {
   describe('4.1 SPMetadata.js', function () {
     it('getAssertionConsumerService with one binding', function (done) {
       var expectedPostLocation = 'https://sp.example.org/sp/sso/post';
-      console.log(binding.post, expectedPostLocation);
       var sp = entry.ServiceProvider({
         privateKeyFile: './test/key/sp/privkey.pem',
         privateKeyFilePass: 'VHOSp5RUiBcrsjrcAuXFwU1NKCkGA8px',
@@ -592,4 +591,14 @@ describe('4 ServiceProvider.js', function () {
       done();
     });
   })
+  describe('5 IdentityProvider.js', function () {
+    describe('5.1 IdPMetadata.js', function () {
+      it('Todo: 1', function (done) {
+        done();
+      });
+      it('Todo 2', function (done) {
+        done();
+      });
+    })
+  });
 });

@@ -35,7 +35,7 @@ export class IdpMetadata extends Metadata {
 			let singleSignOnService = meta.singleSignOnService || [];
 			let singleLogoutService = meta.singleLogoutService || [];
 			let IDPSSODescriptor: Array<any> = [{
-				attr: {
+				_attr: {
 					WantAuthnRequestsSigned: String(wantAuthnRequestsSigned),
 					protocolSupportEnumeration: namespace.names.protocol
 				}
@@ -68,7 +68,7 @@ export class IdpMetadata extends Metadata {
 					attr.Binding = a.Binding;
 					attr.Location = a.Location;
 					IDPSSODescriptor.push({
-						SingleSignOnService: [{ attr }]
+						SingleSignOnService: [{ _attr: attr }]
 					});
 				});
 			} else {
@@ -85,7 +85,7 @@ export class IdpMetadata extends Metadata {
 					attr.index = (indexCount++).toString();
 					attr.Binding = a.Binding;
 					attr.Location = a.Location;
-					IDPSSODescriptor.push({ SingleLogoutService: [{ attr }] });
+					IDPSSODescriptor.push({ SingleLogoutService: [{ _attr: attr }] });
 				});
 			} else {
 				console.warn('Construct identity  provider - missing endpoint of SingleLogoutService');
@@ -93,7 +93,7 @@ export class IdpMetadata extends Metadata {
 			// Create a new metadata by setting
 			meta = xml([{
 				EntityDescriptor: [{
-					attr: {
+					_attr: {
 						'xmlns:md': namespace.names.metadata,
 						'xmlns:assertion': namespace.names.assertion,
 						'xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#',

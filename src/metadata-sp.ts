@@ -33,6 +33,8 @@ export class SpMetadata extends Metadata {
 
 		let byMetadata = typeof meta === 'string';
 
+		console.log('--------------------- meta in very beginning', meta);
+
 		if (!byMetadata) {
 			let entityID = meta.entityID;
 			let authnRequestsSigned = meta.authnRequestsSigned === true;
@@ -44,7 +46,7 @@ export class SpMetadata extends Metadata {
 			let assertionConsumerService = meta.assertionConsumerService || [];
 
 			let SPSSODescriptor: Array<any> = [{
-				attr: {
+				_attr: {
 					AuthnRequestsSigned: authnRequestsSigned.toString(),
 					WantAssertionsSigned: wantAssertionsSigned.toString(),
 					protocolSupportEnumeration: namespace.names.protocol
@@ -78,7 +80,7 @@ export class SpMetadata extends Metadata {
 					attr.index = (indexCount++).toString();
 					attr.Binding = a.Binding;
 					attr.Location = a.Location;
-					SPSSODescriptor.push({ SingleLogoutService: [{ attr }] });
+					SPSSODescriptor.push({ SingleLogoutService: [{ _attr: attr }] });
 				});
 			}
 
@@ -92,7 +94,7 @@ export class SpMetadata extends Metadata {
 					attr.index = (indexCount++).toString();
 					attr.Binding = a.Binding;
 					attr.Location = a.Location;
-					SPSSODescriptor.push({ AssertionConsumerService: [{ attr }] });
+					SPSSODescriptor.push({ AssertionConsumerService: [{ _attr: attr }] });
 				});
 			} else {
 				throw new Error('Missing endpoint of AssertionConsumerService');
@@ -101,22 +103,22 @@ export class SpMetadata extends Metadata {
 			// Create a new metadata by setting
 			meta = xml([{
 				EntityDescriptor: [{
-					attr: {
+					_attr: {
+						entityID,
 						'xmlns:md': namespace.names.metadata,
 						'xmlns:assertion': namespace.names.assertion,
-						'xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#',
-						entityID: entityID
+						'xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
 					}
-				}, {
-					SPSSODescriptor: SPSSODescriptor
-				}]
+				}, { SPSSODescriptor }]
 			}]);
+			console.log('$$$$$$$$$$', SPSSODescriptor);
 		}
     /**
     * @desc  Initialize with creating a new metadata object
     * @param {string/objects} meta     declares path of the metadata
     * @param {array of Objects}        high-level XML element selector
     */
+
 		super(meta, [{
 			localName: 'SPSSODescriptor',
 			attributes: ['WantAssertionsSigned', 'AuthnRequestsSigned']
