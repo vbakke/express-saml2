@@ -166,6 +166,6 @@ export class SpMetadata extends Metadata {
 			}
 			return location;
 		}
-		return this.meta.singlelogoutservice;
+		return this.meta.assertionconsumerservice;
 	}
 }
