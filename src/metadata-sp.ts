@@ -33,8 +33,6 @@ export class SpMetadata extends Metadata {
 
 		let byMetadata = typeof meta === 'string';
 
-		console.log('--------------------- meta in very beginning', meta);
-
 		if (!byMetadata) {
 			let entityID = meta.entityID;
 			let authnRequestsSigned = meta.authnRequestsSigned === true;
@@ -111,7 +109,6 @@ export class SpMetadata extends Metadata {
 					}
 				}, { SPSSODescriptor }]
 			}]);
-			console.log('$$$$$$$$$$', SPSSODescriptor);
 		}
     /**
     * @desc  Initialize with creating a new metadata object
@@ -151,7 +148,6 @@ export class SpMetadata extends Metadata {
 		if (typeof binding === 'string') {
 			let location;
 			let bindName = namespace.binding[binding];
-			console.log(this.meta);
 			if (this.meta.assertionconsumerservice.length > 0) {
 				this.meta.assertionconsumerservice.forEach(obj => {
 					if (obj.binding === bindName) {

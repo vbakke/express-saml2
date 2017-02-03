@@ -48,7 +48,6 @@ export class ServiceProvider extends Entity {
   */
 	public sendLoginRequest(idp, binding, callback, rcallback) {
 		const protocol = namespace.binding[binding] || namespace.binding.redirect;
-		console.log('<<<<<<<<< protocol', protocol, binding);
 		if (protocol == namespace.binding.redirect) {
 			return callback(redirectBinding.loginRequestRedirectURL({
 				idp: idp,
@@ -77,7 +76,6 @@ export class ServiceProvider extends Entity {
   * @param  {function} parseCallback             developers use their own validation to do with passing information
   */
 	public parseLoginResponse(idp, binding, req, parseCallback) {
-		console.log('entity sp plr - flag 1')
 		return this.abstractBindingParser({
 			parserFormat: [{
 				localName: 'StatusCode',

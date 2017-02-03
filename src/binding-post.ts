@@ -43,7 +43,6 @@ function base64LoginRequest(referenceTagXPath: string, entity: any, rcallback: (
       });
     }
     if (metadata.idp.isWantAuthnRequestsSigned()) {
-			console.log('spSetting', spSetting);
       return libsaml.constructSAMLSignature(rawSamlRequest, referenceTagXPath, metadata.sp.getX509Certificate('signing'), spSetting.privateKeyFile, spSetting.privateKeyFilePass, spSetting.requestSignatureAlgorithm); // SS1.1 add signature algorithm
       // No need to embeded XML signature
     }
@@ -61,12 +60,10 @@ function base64LoginRequest(referenceTagXPath: string, entity: any, rcallback: (
 * @param  {function} rcallback     used when developers have their own login response template
 */
 function base64LoginResponse(requestInfo: any, referenceTagXPath: string, entity: any, user: any, rcallback: (template: string) => string, rtnCallback: (xmlStr: any) => void) {
-	console.log('blr - flag 1 ');
   let metadata = {
     idp: entity.idp.entityMeta,
     sp: entity.sp.entityMeta
   };
-	console.log('blr - flag 2 ');
   let idpSetting = entity.idp.entitySetting;
   let resXml = undefined;
   if (metadata && metadata.idp && metadata.sp) {
@@ -74,7 +71,6 @@ function base64LoginResponse(requestInfo: any, referenceTagXPath: string, entity
     let template;
     let _user = user || {};
     let rawSamlResponse;
-		console.log('blr - flag 3 ');
     if (idpSetting.loginResponseTemplate) {
       rawSamlResponse = rcallback(idpSetting.loginResponseTemplate);
     } else {
@@ -84,7 +80,6 @@ function base64LoginResponse(requestInfo: any, referenceTagXPath: string, entity
       fiveMinutesLaterTime.setMinutes(fiveMinutesLaterTime.getMinutes() + 5);
       let fiveMinutesLater = new Date(fiveMinutesLaterTime).toISOString();
       let now = nowTime.toISOString();
-			console.log('blr - flag 4 ');
       let tvalue: any = {
         ID: idpSetting.generateID ? idpSetting.generateID() : uuid.v4(),
         AssertionID: idpSetting.generateID ? idpSetting.generateID() : uuid.v4(),
@@ -110,10 +105,8 @@ function base64LoginResponse(requestInfo: any, referenceTagXPath: string, entity
       }
       rawSamlResponse = libsaml.replaceTagsByValue(libsaml.defaultLoginResponseTemplate, tvalue);
     }
-		console.log('blr - flag 5 ', idpSetting);
     resXml = metadata.sp.isWantAssertionsSigned() ? libsaml.constructSAMLSignature(rawSamlResponse, referenceTagXPath, metadata.idp.getX509Certificate('signing'), idpSetting.privateKeyFile, idpSetting.privateKeyFilePass, idpSetting.requestSignatureAlgorithm, false) : rawSamlResponse; // SS1.1 add signature algorithm
     // SS-1.1
-		console.log('blr - flag 6 ');
     idpSetting.isAssertionEncrypted ? libsaml.encryptAssertion(entity.idp, entity.sp, resXml, rtnCallback) : rtnCallback(resXml);
   } else {
     throw new Error('Missing declaration of metadata');

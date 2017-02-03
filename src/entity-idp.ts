@@ -51,9 +51,7 @@ export class IdentityProvider extends Entity {
 	*/
 	constructor(idpSetting) {
 		const entitySetting = Object.assign({ wantAuthnRequestsSigned: false }, idpSetting);
-		console.log('*************** idpSetting', entitySetting);
 		super(entitySetting, 'idp');
-		console.log('****idp*********** this.entitySetting', this.entitySetting);
 	}
 
   /**
@@ -67,14 +65,11 @@ export class IdentityProvider extends Entity {
   */
 	public sendLoginResponse(sp, requestInfo, binding, user, callback, rcallback) {
 		const protocol = namespace.binding[binding] || namespace.binding.redirect;
-		console.log('slr --- flag 1', protocol)
 		if (protocol == namespace.binding.post) {
-			console.log('slr --- flag 2')
 			postBinding.base64LoginResponse(requestInfo, libsaml.createXPath('Assertion'), {
 				idp: this,
 				sp: sp
 			}, user, rcallback, function (res) {
-				console.log('slr --- flag 3')
 				// xmlenc is using async process
 				return callback({
 					actionValue: res,

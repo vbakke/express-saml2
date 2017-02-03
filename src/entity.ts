@@ -200,8 +200,6 @@ export default class Entity {
 			return parseCallback(parseResult);
 		}
 
-		console.log('<<<<<<<< >>>>>>>>>>>', binding, bindDict.post, supportBindings, nsBinding);
-
 		if (binding == bindDict.post && supportBindings.indexOf(nsBinding[binding]) !== -1) {
 			// make sure express.bodyParser() has been used
 			let encodedRequest = req.body[libsaml.getQueryParamByType(parserType)];

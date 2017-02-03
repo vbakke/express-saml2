@@ -591,14 +591,4 @@ describe('4 ServiceProvider.js', function () {
       done();
     });
   })
-  describe('5 IdentityProvider.js', function () {
-    describe('5.1 IdPMetadata.js', function () {
-      it('Todo: 1', function (done) {
-        done();
-      });
-      it('Todo 2', function (done) {
-        done();
-      });
-    })
-  });
 });

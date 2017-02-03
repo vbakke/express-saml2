@@ -47,8 +47,8 @@ export interface LibSamlInterface {
 
 	getSigningScheme: (sigAlg: string) => string | null;
 	getDigestMethod: (sigAlg: string) => string | null;
-	getAttributes: (xmlDoc, localName: string, attributes: Array<string>) => string | [string];
 	getAttribute: (xmlDoc, localName: string, attribute: string) => string;
+	getAttributes: (xmlDoc, localName: string, attributes: Array<string>) => string | [string];
 	getInnerTextWithOuterKey: (xmlDoc, localName: string, localNameKey: string, valueTag: string) => any;
 	getAttributeKey: (xmlDoc, localName: string, localNameKey: string, attributeTag: string) => any;
 	getEntireBody: (xmlDoc, localName: string, isOutputString?: boolean) => any;
@@ -131,6 +131,27 @@ const libSaml = function () {
 	}
 	/**
 	* @private
+	* @desc Helper function used by another private function: getAttributes
+	* @param  {xml} xmlDoc          used xml document
+	* @param  {string} localName    tag name without prefix
+	* @param  {string} attribute    name of attribute
+	* @return {string} attribute value
+	*/
+	function getAttribute(xmlDoc, localName: string, attribute: string): string {
+		let xpathStr = createXPath({
+			name: localName,
+			attr: attribute
+		});
+		let selection = select(xpathStr, xmlDoc);
+
+		if (selection.length !== 1) {
+			return undefined;
+		} else {
+			return selection[0].nodeValue.toString();
+		}
+	}
+	/**
+	* @private
 	* @desc Get the attibutes
 	* @param  {xml} xmlDoc              used xml document
 	* @param  {string} localName        tag name without prefix
@@ -153,27 +174,6 @@ const libSaml = function () {
 			data.push(dat);
 		});
 		return data.length === 1 ? data[0] : data;
-	}
-	/**
-	* @private
-	* @desc Helper function used by another private function: getAttributes
-	* @param  {xml} xmlDoc          used xml document
-	* @param  {string} localName    tag name without prefix
-	* @param  {string} attribute    name of attribute
-	* @return {string} attribute value
-	*/
-	function getAttribute(xmlDoc, localName: string, attribute: string): string {
-		let xpathStr = createXPath({
-			name: localName,
-			attr: attribute
-		});
-		let selection = select(xpathStr, xmlDoc);
-
-		if (selection.length !== 1) {
-			return undefined;
-		} else {
-			return selection[0].nodeValue.toString();
-		}
 	}
 	/**
 	* @private
@@ -325,13 +325,10 @@ const libSaml = function () {
 			if (referenceXPath && referenceXPath !== '') {
 				sig.addReference(referenceXPath, null, getDigestMethod(signatureAlgorithm)); // SS-1.1
 			}
-			console.log('cssi - flag 1')
 			sig.signatureAlgorithm = signatureAlgorithm; // SS-1.1
 			sig.keyInfoProvider = new this.getKeyInfo(x509);
-			console.log('cssi - flag 2', keyFile, passphrase)
 			sig.signingKey = utility.readPrivateKeyFromFile(keyFile, passphrase, true);
 			sig.computeSignature(xmlString);
-			console.log('cssi - flag 3')
 			return isBase64Output !== false ? utility.base64Encode(sig.getSignedXml()) : sig.getSignedXml();
 		},
 		/**
@@ -538,28 +535,22 @@ const libSaml = function () {
 					let parseEntireXML = new dom().parseFromString(String(entireXML));
 					let encryptedDataNode = getEntireBody(parseEntireXML, 'EncryptedData');
 					let encryptedData = encryptedDataNode !== undefined ? utility.parseString(encryptedDataNode.toString()) : '';
-
 					if (encryptedData === '') {
 						throw new Error('Undefined assertion or invalid syntax');
 					}
-					console.log('hereSetting ===============', hereSetting)
-					console.log('encryptedData ===============', encryptedData)
-					console.log('encryptedData key ===============', utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass))
-					xmlenc.decrypt(encryptedData, {
-						key: utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass), // use this entity's private to decrypt
+					return xmlenc.decrypt(encryptedData, {
+						key: utility.readPrivateKeyFromFile(hereSetting.encPrivateKeyFile, hereSetting.encPrivateKeyFilePass)
 					}, (err, res) => {
 						if (err) {
-							console.log('********* exception ************', err);
 							throw new Error('Exception in decryptAssertion ' + err);
 						}
-						if (res) {
-							callback(String(parseEntireXML).replace('<saml:EncryptedAssertion>', '').replace('</saml:EncryptedAssertion>', '').replace(encryptedData, res));
-						} else {
+						if (!res) {
 							throw new Error('Undefined encrypted assertion');
 						}
+						return callback(String(parseEntireXML).replace('<saml:EncryptedAssertion>', '').replace('</saml:EncryptedAssertion>', '').replace(encryptedData, res));
 					});
 				} else {
-					callback(entireXML); // No need to do encrpytion
+					return callback(entireXML); // No need to do encrpytion
 				}
 			} else {
 				throw new Error('Empty or undefined xml string');

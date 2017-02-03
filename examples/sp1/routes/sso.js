@@ -79,7 +79,6 @@ router.get('/spinitsso-post', function (req, res) {
       break;
     }
   }
-  console.log(fromSP.entityMeta.isAuthnRequestSigned(), toIdP.entityMeta.isWantAuthnRequestsSigned());
   fromSP.sendLoginRequest(toIdP, 'post', function (request) {
     res.render('actions', request);
   });
@@ -101,7 +100,6 @@ router.post('/acs/:idp?', function (req, res, next) {
     _sp = sp;
   }
   _sp.parseLoginResponse(_idp, 'post', req, function (parseResult) {
-    console.log('after login response *********************', parseResult);
     if (parseResult.extract.nameid) {
       res.render('login', {
         title: 'Processing',
