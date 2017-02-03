@@ -179,12 +179,12 @@ router.get('/logout/all', function (req, res) {
       if (req.query && req.query.async && req.query.async.toString() === 'true') {
         response.ajaxSubmit = true;
       }
-      res.render('actions', response);
+      return res.render('actions', response);
     });
   } else {
     req.logout();
     req.flash('info', 'Unexpected error in /relayState');
-    res.redirect('/login');
+    return res.redirect('/login');
   }
 });
 

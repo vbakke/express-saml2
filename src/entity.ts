@@ -239,21 +239,19 @@ export default class Entity {
   * @param  {function} rcallback     used when developers have their own login response template
   */
 	sendLogoutRequest(targetEntity, binding, user, relayState, callback, rcallback) {
-		binding = namespace.binding[binding] || namespace.binding.redirect;
-		if (binding === namespace.binding.redirect) {
+		if (binding === wording.binding.redirect) {
 			return callback(redirectBinding.logoutRequestRedirectURL(user, {
 				init: this,
 				target: targetEntity
 			}, rcallback, relayState));
 		}
-		if (binding === namespace.binding.post) {
+		if (binding === wording.binding.post) {
+			const entityEndpoint = targetEntity.entityMeta.getSingleLogoutService(binding);
+			const	actionValue = postBinding.base64LogoutRequest(user, libsaml.createXPath('Issuer'), { init: this, target: targetEntity }, rcallback);
 			return callback({
-				actionValue: postBinding.base64LogoutRequest(user, libsaml.createXPath('Issuer'), {
-					init: this,
-					target: targetEntity
-				}, rcallback),
-				relayState: relayState,
-				entityEndpoint: targetEntity.entityMeta.getSingleLogoutService(binding),
+				actionValue,
+				relayState,
+				entityEndpoint,
 				actionType: 'SAMLRequest'
 			});
 		}
