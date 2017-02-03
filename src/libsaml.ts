@@ -493,7 +493,9 @@ const libSaml = function () {
 				let assertionNode = getEntireBody(new dom().parseFromString(entireXML), 'Assertion');
 				let assertion = assertionNode !== undefined ? utility.parseString(assertionNode.toString()) : '';
 
-				if (assertion === '') throw new Error('Undefined assertion or invalid syntax');
+				if (assertion === '') {
+					throw new Error('Undefined assertion or invalid syntax');
+				}
 				// Perform encryption depends on the setting, default is false
 				if (sourceEntitySetting.isAssertionEncrypted) {
 					// callback should be function (res) { ... }
@@ -502,17 +504,18 @@ const libSaml = function () {
 						rsa_pub: new Buffer(utility.getPublicKeyPemFromCertificate(targetEntityMetadata.getX509Certificate(certUsage.encrypt)).replace(/\r?\n|\r/g, '')), // public key from certificate
 						pem: new Buffer('-----BEGIN CERTIFICATE-----' + targetEntityMetadata.getX509Certificate(certUsage.encrypt) + '-----END CERTIFICATE-----'),
 						encryptionAlgorithm: sourceEntitySetting.dataEncryptionAlgorithm,
-						keyEncryptionAlgorighm: sourceEntitySetting.keyEncryptionAlgorithm // typo in xml-encryption
-					}, function (err, res) {
-						if (err) throw new Error('Exception in encrpytedAssertion ' + err);
-						if (res) {
-							callback(utility.base64Encode(entireXML.replace(assertion, '<saml:EncryptedAssertion>' + res + '</saml:EncryptedAssertion>')));
-						} else {
+						keyEncryptionAlgorighm: sourceEntitySetting.keyEncryptionAlgorithm
+					}, (err, res) => {
+						if (err) {
+							throw new Error('Exception in encrpytedAssertion ' + err);
+						}
+						if (!res) {
 							throw new Error('Undefined encrypted assertion');
 						}
+						return callback(utility.base64Encode(entireXML.replace(assertion, '<saml:EncryptedAssertion>' + res + '</saml:EncryptedAssertion>')));
 					});
 				} else {
-					callback(utility.base64Encode(entireXML)); // No need to do encrpytion
+					return callback(utility.base64Encode(entireXML)); // No need to do encrpytion
 				}
 			} else {
 				throw new Error('Empty or undefined xml string');
@@ -532,18 +535,19 @@ const libSaml = function () {
 				// Perform encryption depends on the setting of where the message is sent, default is false
 				if (type === 'SAMLResponse' && from.entitySetting.isAssertionEncrypted) {
 					let hereSetting = here.entitySetting;
-					// callback should be function (res) { ... }
 					let parseEntireXML = new dom().parseFromString(String(entireXML));
 					let encryptedDataNode = getEntireBody(parseEntireXML, 'EncryptedData');
 					let encryptedData = encryptedDataNode !== undefined ? utility.parseString(encryptedDataNode.toString()) : '';
 
-					if (encryptedData === '') throw new Error('Undefined assertion or invalid syntax');
+					if (encryptedData === '') {
+						throw new Error('Undefined assertion or invalid syntax');
+					}
 					console.log('hereSetting ===============', hereSetting)
 					console.log('encryptedData ===============', encryptedData)
 					console.log('encryptedData key ===============', utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass))
 					xmlenc.decrypt(encryptedData, {
 						key: utility.readPrivateKeyFromFile(hereSetting.privateKeyFile, hereSetting.privateKeyFilePass), // use this entity's private to decrypt
-					}, function (err, res) {
+					}, (err, res) => {
 						if (err) {
 							console.log('********* exception ************', err);
 							throw new Error('Exception in decryptAssertion ' + err);

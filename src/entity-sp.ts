@@ -48,6 +48,7 @@ export class ServiceProvider extends Entity {
   */
 	public sendLoginRequest(idp, binding, callback, rcallback) {
 		const protocol = namespace.binding[binding] || namespace.binding.redirect;
+		console.log('<<<<<<<<< protocol', protocol, binding);
 		if (protocol == namespace.binding.redirect) {
 			return callback(redirectBinding.loginRequestRedirectURL({
 				idp: idp,

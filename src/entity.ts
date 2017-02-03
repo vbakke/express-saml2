@@ -146,21 +146,23 @@ export default class Entity {
 
 		if (actionType === 'login') {
 			if (entityMeta.getAssertionConsumerService) {
-				let assertionConsumerService = entityMeta.getAssertionConsumerService();
-				if (assertionConsumerService !== undefined) {
-					supportBindings = entityMeta.getSupportBindings(typeof assertionConsumerService === 'string' ? [assertionConsumerService] : assertionConsumerService);
+				let assertionConsumerService = entityMeta.getAssertionConsumerService(binding);
+				if (!assertionConsumerService) {
+					supportBindings = [];
 				}
 			} else if (entityMeta.getSingleSignOnService) {
-				let singleSignOnService = entityMeta.getSingleSignOnService();
-				if (singleSignOnService !== undefined) {
-					supportBindings = entityMeta.getSupportBindings(typeof singleSignOnService === 'string' ? [singleSignOnService] : singleSignOnService);
+				let singleSignOnService = entityMeta.getSingleSignOnService(binding);
+				if (!singleSignOnService) {
+					supportBindings = [];
 				}
 			}
 		} else if (actionType == 'logout') {
-			let singleLogoutServices = entityMeta.getSingleLogoutService();
-			if (singleLogoutServices !== undefined) {
-				supportBindings = entityMeta.getSupportBindings(typeof singleLogoutServices === 'string' ? [singleLogoutServices] : singleLogoutServices);
+			let singleLogoutServices = entityMeta.getSingleLogoutService(binding);
+			if (!singleLogoutServices) {
+				supportBindings = [];
 			}
+		} else {
+			throw new Error('Invalid actionType in abstractBindingParser');
 		}
 
 		if (binding === bindDict.redirect && supportBindings.indexOf(nsBinding[binding]) !== -1) {
@@ -197,13 +199,16 @@ export default class Entity {
 			}
 			return parseCallback(parseResult);
 		}
+
+		console.log('<<<<<<<< >>>>>>>>>>>', binding, bindDict.post, supportBindings, nsBinding);
+
 		if (binding == bindDict.post && supportBindings.indexOf(nsBinding[binding]) !== -1) {
 			// make sure express.bodyParser() has been used
 			let encodedRequest = req.body[libsaml.getQueryParamByType(parserType)];
 			let decodedRequest = utility.base64Decode(encodedRequest);
 			let issuer = targetEntityMetadata.getEntityID();
 			//SS-1.1
-			libsaml.decryptAssertion(parserType, here, from, decodedRequest, function (res) {
+			return libsaml.decryptAssertion(parserType, here, from, decodedRequest, res => {
 				let parseResult = {
 					samlContent: res,
 					extract: libsaml.extractor(res, fields)
