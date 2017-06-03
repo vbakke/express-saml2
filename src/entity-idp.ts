@@ -9,7 +9,7 @@ import utility from './utility';
 import { wording, namespace, tags } from './urn';
 import redirectBinding from './binding-redirect';
 import postBinding from './binding-post';
-import { assign, isString, isArray } from 'lodash';
+import { isString } from 'lodash';
 
 const bindDict = wording.binding;
 const xmlTag = tags.xmlTag;
@@ -51,10 +51,10 @@ export class IdentityProvider extends Entity {
   * @param  {string} meta
   */
   constructor(idpSetting) {
-    let entitySetting = assign({ wantAuthnRequestsSigned: false }, idpSetting);
+    let entitySetting = Object.assign({ wantAuthnRequestsSigned: false }, idpSetting);
     // build attribute part
     if (idpSetting.loginResponseTemplate) {
-      if(isString(idpSetting.loginResponseTemplate.context) && isArray(idpSetting.loginResponseTemplate.attributes)) {
+      if(isString(idpSetting.loginResponseTemplate.context) && Array.isArray(idpSetting.loginResponseTemplate.attributes)) {
         let replacement = {
           AttributeStatement: libsaml.attributeStatementBuilder(idpSetting.loginResponseTemplate.attributes)
         };
@@ -76,16 +76,15 @@ export class IdentityProvider extends Entity {
   public async createLoginResponse(sp, requestInfo, binding, user, customTagReplacement) {
     const protocol = namespace.binding[binding] || namespace.binding.redirect;
     if (protocol == namespace.binding.post) {
-      const res = await postBinding.base64LoginResponse(requestInfo, libsaml.createXPath('Assertion'), {
+      const context = await postBinding.base64LoginResponse(requestInfo, {
         idp: this,
         sp: sp
       }, user, customTagReplacement);
-
       // xmlenc is using async process
       return {
-        actionValue: res,
+        ...context,
         entityEndpoint: sp.entityMeta.getAssertionConsumerService(binding),
-        actionType: 'SAMLResponse'
+        type: 'SAMLResponse'
       };
 
     } else {
@@ -113,7 +112,7 @@ export class IdentityProvider extends Entity {
         }],
       checkSignature: this.entityMeta.isWantAuthnRequestsSigned(),
       parserType: 'SAMLRequest',
-      actionType: 'login'
+      type: 'login'
     }, binding, req, sp.entityMeta);
   };
 }

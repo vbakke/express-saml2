@@ -2,9 +2,6 @@
 * @file entity.ts
 * @author tngan
 * @desc  An abstraction for identity provider and service provider.
-*
-* v2.0
-* v1.1  SS-1.1
 */
 import { base64Decode, isNonEmptyArray, inflateString } from './utility';
 import { namespace, wording, algorithms } from './urn';
@@ -15,10 +12,10 @@ import IdpMetadata from './metadata-idp';
 import SpMetadata from './metadata-sp';
 import redirectBinding from './binding-redirect';
 import postBinding from './binding-post';
-import { isString, isUndefined, assign } from 'lodash';
+import { isString, isUndefined, isArray } from 'lodash';
 
-const dataEncryptionAlgorithm = algorithms.encryption.data; // SS1.1
-const keyEncryptionAlgorithm = algorithms.encryption.key; // SS1.1
+const dataEncryptionAlgorithm = algorithms.encryption.data;
+const keyEncryptionAlgorithm = algorithms.encryption.key;
 const bindDict = wording.binding;
 const signatureAlgorithms = algorithms.signature;
 const nsBinding = namespace.binding;
@@ -31,9 +28,25 @@ const defaultEntitySetting = {
   requestSignatureAlgorithm: signatureAlgorithms.RSA_SHA1,
   dataEncryptionAlgorithm: dataEncryptionAlgorithm.AES_256,
   keyEncryptionAlgorithm: keyEncryptionAlgorithm.RSA_1_5,
-  generateID: (): string => uuid.v4(),
+  generateID: (): string => ('_' + uuid.v4()),
   relayState: ''
 };
+
+export interface BindingContext {
+  context: string;
+  id: string;
+}
+
+export interface PostRequestInfo extends BindingContext {
+  relayState: string;
+  type: string;
+  entityEndpoint: string;
+}
+
+export interface PostResponseInfo extends BindingContext {
+  entityEndpoint: string;
+  type: string;
+}
 
 export default class Entity {
 
@@ -47,7 +60,7 @@ export default class Entity {
   * @param {string} entityMeta is the entity metadata, deprecated after 2.0
   */
   constructor(entitySetting, entityType) {
-    this.entitySetting = assign({}, defaultEntitySetting, entitySetting);
+    this.entitySetting = Object.assign({}, defaultEntitySetting, entitySetting);
     const metadata = entitySetting.metadata ? entitySetting.metadata : entitySetting;
     switch (entityType) {
       case 'idp':
@@ -140,14 +153,14 @@ export default class Entity {
   * @return {ParseResult} parseResult
   */
   async abstractBindingParser(opts, binding: string, req, targetEntityMetadata) {
-    const here = this; //SS-1.1 (refractor later on)
+    const here = this;
     const entityMeta: any = this.entityMeta;
     let options = opts || {};
     let parseResult = {};
     let supportBindings = [nsBinding.redirect, nsBinding.post];
-    let { parserFormat: fields, parserType, actionType, from, checkSignature = true, decryptAssertion = false } = options;
+    let { parserFormat: fields, parserType, type, from, checkSignature = true, decryptAssertion = false } = options;
 
-    if (actionType === 'login') {
+    if (type === 'login') {
       if (entityMeta.getAssertionConsumerService) {
         let assertionConsumerService = entityMeta.getAssertionConsumerService(binding);
         if (!assertionConsumerService) {
@@ -159,13 +172,13 @@ export default class Entity {
           supportBindings = [];
         }
       }
-    } else if (actionType == 'logout') {
+    } else if (type == 'logout') {
       let singleLogoutServices = entityMeta.getSingleLogoutService(binding);
       if (!singleLogoutServices) {
         supportBindings = [];
       }
     } else {
-      throw new Error('Invalid actionType in abstractBindingParser');
+      throw new Error('Invalid type in abstractBindingParser');
     }
 
     if (binding === bindDict.redirect && supportBindings.indexOf(nsBinding[binding]) !== -1) {
@@ -179,7 +192,6 @@ export default class Entity {
       if (checkSignature) {
         let { SigAlg: sigAlg, Signature: signature } = reqQuery;
         if (signature && sigAlg) {
-          // add sigAlg to verify message (SS-1.1)
           if (libsaml.verifyMessageSignature(targetEntityMetadata, <string>req._parsedOriginalUrl.query.split('&Signature=')[0], new Buffer(decodeURIComponent(signature), 'base64'), sigAlg)) {
             parseResult = {
               samlContent: xmlString,
@@ -188,7 +200,7 @@ export default class Entity {
             };
           } else {
             // Fail to verify message signature
-            throw new Error('fail to verify message signature');
+            throw new Error('fail to verify message signature in request');
           }
         } else {
           // Missing signature or signature algorithm
@@ -208,28 +220,31 @@ export default class Entity {
       let encodedRequest = req.body[libsaml.getQueryParamByType(parserType)];
       let decodedRequest = String(base64Decode(encodedRequest));
       let issuer = targetEntityMetadata.getEntityID();
-      //SS-1.1
       const res = await libsaml.decryptAssertion(parserType, here, from, decodedRequest);
-
       let parseResult = {
         samlContent: res,
         extract: libsaml.extractor(res, fields)
       };
       if (checkSignature) {
-        // verify the signature
-        if (!libsaml.verifySignature(res, parseResult.extract.signature, {
-          cert: targetEntityMetadata,
-          signatureAlgorithm: here.entitySetting.requestSignatureAlgorithm
-        })) {
-          throw new Error('incorrect signature');
-        }
+        // verify the signatures (for both assertion/message)
+        // sigantures[0] is message signature
+        // sigantures[1] is assertion signature
+        [...parseResult.extract.signature].reverse().forEach(s => {
+          if (!libsaml.verifySignature(res, parseResult.extract.signature, {
+            cert: targetEntityMetadata,
+            signatureAlgorithm: here.entitySetting.requestSignatureAlgorithm
+          })) {
+            throw new Error('incorrect signature');
+          }
+          // in order to get the raw xml
+          // remove assertion signature because the assertion signature is later than the message signature
+          res.replace(s, '');
+        });
       }
       if (!here.verifyFields(parseResult.extract.issuer, issuer)) {
         throw new Error('incorrect issuer');
       }
-
       return parseResult;
-
     }
     // Will support artifact in the next release
     throw new Error('this binding is not support');
@@ -242,7 +257,7 @@ export default class Entity {
   * @param  {string} relayState      the URL to which to redirect the user when logout is complete
   * @param  {function} customTagReplacement     used when developers have their own login response template
   */
-  createLogoutRequest(targetEntity, binding, user, relayState, customTagReplacement): any {
+  createLogoutRequest(targetEntity, binding, user, relayState, customTagReplacement): BindingContext | PostRequestInfo {
     if (binding === wording.binding.redirect) {
       return redirectBinding.logoutRequestRedirectURL(user, {
         init: this,
@@ -251,12 +266,12 @@ export default class Entity {
     }
     if (binding === wording.binding.post) {
       const entityEndpoint = targetEntity.entityMeta.getSingleLogoutService(binding);
-      const actionValue = postBinding.base64LogoutRequest(user, libsaml.createXPath('Issuer'), { init: this, target: targetEntity }, customTagReplacement);
+      const context = postBinding.base64LogoutRequest(user, libsaml.createXPath('Issuer'), { init: this, target: targetEntity }, customTagReplacement);
       return {
-        actionValue,
+        ...context,
         relayState,
         entityEndpoint,
-        actionType: 'SAMLRequest'
+        type: 'SAMLRequest'
       };
     }
     // Will support artifact in the next release
@@ -270,23 +285,24 @@ export default class Entity {
   * @param  {string} binding                     protocol binding
   * @param  {function} customTagReplacement                 used when developers have their own login response template
   */
-  createLogoutResponse(targetEntity, requestInfo, binding, relayState, customTagReplacement): any {
+  createLogoutResponse(target, requestInfo, binding, relayState, customTagReplacement): BindingContext {
     binding = namespace.binding[binding] || namespace.binding.redirect;
     if (binding === namespace.binding.redirect) {
       return redirectBinding.logoutResponseRedirectURL(requestInfo, {
         init: this,
-        target: targetEntity
+        target,
       }, relayState, customTagReplacement);
     }
     if (binding === namespace.binding.post) {
-      return {
-        actionValue: postBinding.base64LogoutResponse(requestInfo, libsaml.createXPath('Issuer'), {
+      const context = postBinding.base64LogoutResponse(requestInfo, {
           init: this,
-          target: targetEntity
-        }, customTagReplacement),
-        relayState: relayState,
-        entityEndpoint: targetEntity.entityMeta.getSingleLogoutService(binding),
-        actionType: 'SAMLResponse'
+          target,
+        }, customTagReplacement)
+      return {
+        ...context,
+        relayState,
+        entityEndpoint: target.entityMeta.getSingleLogoutService(binding),
+        type: 'SAMLResponse'
       };
     }
     throw new Error('This binding is not support');
@@ -309,7 +325,7 @@ export default class Entity {
         }],
       checkSignature: this.entitySetting.wantLogoutRequestSigned,
       parserType: 'LogoutRequest',
-      actionType: 'logout'
+      type: 'logout'
     }, binding, req, targetEntity.entityMeta);
   };
   /**
@@ -334,7 +350,7 @@ export default class Entity {
       checkSignature: this.entitySetting.wantLogoutResponseSigned,
       supportBindings: ['post'],
       parserType: 'LogoutResponse',
-      actionType: 'logout'
+      type: 'logout'
     }, binding, req, targetEntity.entityMeta);
   }
 }

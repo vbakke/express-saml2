@@ -34,6 +34,7 @@ export interface SignatureConstructor {
   signatureAlgorithm: string;
   signingCert: string | Buffer;
   isBase64Output?: boolean;
+  messageSignatureConfig?: any;
 }
 
 interface SignatureVerifierOptions {
@@ -388,20 +389,24 @@ const libSaml = function () {
     * @param  {string} privateKey           declares the private key
     * @param  {string} passphrase           passphrase of the private key [optional]
     * @param  {string|buffer} signingCert   signing certificate
-    * @param  {string} signatureAlgorithm   signature algorithm (SS-1.1)
+    * @param  {string} signatureAlgorithm   signature algorithm 
     * @return {string} base64 encoded string
     */
     constructSAMLSignature: function (opts: SignatureConstructor) {
-      const { rawSamlMessage, referenceTagXPath, privateKey, privateKeyPass, signatureAlgorithm, signingCert, isBase64Output = true } = opts;
+      const { rawSamlMessage, referenceTagXPath, privateKey, privateKeyPass, signatureAlgorithm, signingCert, isBase64Output = true, messageSignatureConfig } = opts;
       let sig = new SignedXml();
       // Add assertion sections as reference
       if (referenceTagXPath && referenceTagXPath !== '') {
-        sig.addReference(referenceTagXPath, null, getDigestMethod(signatureAlgorithm)); // SS-1.1
+        sig.addReference(referenceTagXPath, null, getDigestMethod(signatureAlgorithm));
       }
-      sig.signatureAlgorithm = signatureAlgorithm; // SS-1.1
+      sig.signatureAlgorithm = signatureAlgorithm;
       sig.keyInfoProvider = new this.getKeyInfo(signingCert);
       sig.signingKey = utility.readPrivateKey(privateKey, privateKeyPass, true);
-      sig.computeSignature(rawSamlMessage);
+      if (messageSignatureConfig) {
+        sig.computeSignature(rawSamlMessage, messageSignatureConfig);
+      } else {
+        sig.computeSignature(rawSamlMessage);
+      }
       return isBase64Output !== false ? utility.base64Encode(sig.getSignedXml()) : sig.getSignedXml();
     },
     /**
@@ -500,14 +505,14 @@ const libSaml = function () {
     * @param  {string} octetString               see "Bindings for the OASIS Security Assertion Markup Language (SAML V2.0)" P.17/46
     * @param  {string} key                       declares the pem-formatted private key
     * @param  {string} passphrase                passphrase of private key [optional]
-    * @param  {string} signingAlgorithm          signing algorithm (SS-1.1)
+    * @param  {string} signingAlgorithm          signing algorithm
     * @return {string} message signature
     */
     constructMessageSignature: function (octetString: string, key: string, passphrase?: string, isBase64?: boolean, signingAlgorithm?: string) {
       // Default returning base64 encoded signature
       // Embed with node-rsa module
       let decryptedKey = new nrsa(utility.readPrivateKey(key, passphrase), {
-        signingScheme: getSigningScheme(signingAlgorithm) // SS-1.1
+        signingScheme: getSigningScheme(signingAlgorithm)
       });
       let signature = decryptedKey.sign(octetString);
       // Use private key to sign data
@@ -518,10 +523,8 @@ const libSaml = function () {
     * @param  {Metadata} metadata                 metadata object of identity provider or service provider
     * @param  {string} octetString                see "Bindings for the OASIS Security Assertion Markup Language (SAML V2.0)" P.17/46
     * @param  {string} signature                  context of XML signature
-    * @param  {string} verifyAlgorithm            algorithm used to verify (SS-1.1)
+    * @param  {string} verifyAlgorithm            algorithm used to verify 
     * @return {boolean} verification result
-    *
-    * SS1.1 Code refractoring
     */
     verifyMessageSignature: function (metadata, octetString: string, signature: string | Buffer, verifyAlgorithm?: string) {
       let key = new nrsa(utility.getPublicKeyPemFromCertificate(metadata.getX509Certificate(certUse.signing)), {
@@ -578,13 +581,13 @@ const libSaml = function () {
               if (!res) {
                 return reject(new Error('undefined encrypted assertion'));
               }
-              return resolve(utility.base64Encode(entireXML.replace(/<saml:Assertion(.*)<\/saml:Assertion>/g, '<saml:EncryptedAssertion>' + res + '</saml:EncryptedAssertion>')));
+              return resolve(utility.base64Encode(entireXML.replace(/<(.*?)Assertion(.*?)>(.*?)<\/(.*?)Assertion>/g, `<saml:EncryptedAssertion>${res}</saml:EncryptedAssertion>`)));
             });
           } else {
             return resolve(utility.base64Encode(entireXML)); // No need to do encrpytion
           }
         } else {
-          return reject(new Error('empty or undefined xml string'));
+          return reject(new Error('empty or undefined xml string during encryption'));
         }
       })
     },
@@ -618,13 +621,13 @@ const libSaml = function () {
               if (!res) {
                 return reject(new Error('undefined encrypted assertion'));
               }
-              return resolve(String(parseEntireXML).replace('<saml:EncryptedAssertion>', '').replace('</saml:EncryptedAssertion>', '').replace(encryptedData, res));
+              return resolve(String(parseEntireXML).replace(/<(.*?)EncryptedAssertion(.*?)>/g, '').replace(encryptedData, res));
             });
           } else {
             return resolve(entireXML); // No need to do encrpytion
           }
         } else {
-          return reject(new Error('empty or undefined xml string'));
+          return reject(new Error('empty or undefined xml string during decryption'));
         }
       });
     }

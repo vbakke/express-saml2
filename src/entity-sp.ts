@@ -3,13 +3,12 @@
 * @author tngan
 * @desc  Declares the actions taken by service provider
 */
-import Entity from './entity';
+import Entity, { BindingContext, PostRequestInfo } from './entity';
 import libsaml from './libsaml';
 import utility from './utility';
 import { wording, namespace, tags } from './urn';
 import redirectBinding from './binding-redirect';
 import postBinding from './binding-post';
-import { assign } from 'lodash';
 
 const bindDict = wording.binding;
 const xmlTag = tags.xmlTag;
@@ -34,9 +33,10 @@ export class ServiceProvider extends Entity {
   * @param {string} meta		     metadata
   */
   constructor(spSetting) {
-    const entitySetting = assign({
+    const entitySetting = Object.assign({
       authnRequestsSigned: false,
-      wantAssertionsSigned: false
+      wantAssertionsSigned: false,
+      wantMessageSigned: false
     }, spSetting);
     super(entitySetting, 'sp');
   }
@@ -46,27 +46,22 @@ export class ServiceProvider extends Entity {
   * @param  {string}   binding                   protocol binding
   * @param  {function} customTagReplacement     used when developers have their own login response template
   */
-  public createLoginRequest(idp, binding, customTagReplacement): any {
-    const protocol = namespace.binding[binding] || namespace.binding.redirect;
-    if (protocol == namespace.binding.redirect) {
-      return redirectBinding.loginRequestRedirectURL({
-        idp: idp,
-        sp: this
-      }, customTagReplacement);
-    } else if (protocol == namespace.binding.post) {
+  public createLoginRequest(idp, binding = 'redirect', customTagReplacement): BindingContext | PostRequestInfo {
+    const nsBinding = namespace.binding;
+    const protocol = nsBinding[binding];
+    if (protocol === nsBinding.redirect) {
+      return redirectBinding.loginRequestRedirectURL({ idp, sp: this }, customTagReplacement);
+    } else if (protocol === nsBinding.post) {
+      const context = postBinding.base64LoginRequest(libsaml.createXPath('Issuer'), { idp, sp: this }, customTagReplacement);
       return {
-        actionValue: postBinding.base64LoginRequest(libsaml.createXPath('Issuer'), {
-          idp: idp,
-          sp: this
-        }, customTagReplacement),
+        ...context,
         relayState: this.entitySetting.relayState,
         entityEndpoint: idp.entityMeta.getSingleSignOnService(binding),
-        actionType: 'SAMLRequest'
+        type: 'SAMLRequest'
       };
-    } else {
-      // Will support artifact in the next release
-      throw new Error('The binding is not support');
-    }
+    } 
+    // Will support artifact in the next release
+    throw new Error('The binding is not support');
   }
   /**
   * @desc   Validation of the parsed the URL parameters
@@ -92,11 +87,11 @@ export class ServiceProvider extends Entity {
         },
         valueTag: 'AttributeValue'
       }],
-      checkSignature: this.entityMeta.isWantAssertionsSigned(),
       from: idp,
+      checkSiganture: true, // saml response must have signature
       supportBindings: ['post'],
       parserType: 'SAMLResponse',
-      actionType: 'login'
+      type: 'login'
     }, binding, req, idp.entityMeta);
   };
 
